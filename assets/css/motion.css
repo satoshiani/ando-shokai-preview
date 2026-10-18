@@ -1,0 +1,167 @@
+/* 安東商会 トップページ — 見せ方と動き
+   1. 冬の一杯のヒーロー（口元から白い息）
+   2. 3Dコーヒー缶がスクロールで回るステージ
+   3. 大きな数字／ふわっと表示／缶のページ案内
+   動きを減らす設定の方には、動きを止めて静止表示にする。 */
+
+/* ================= 1. ヒーロー ================= */
+.p-top {
+  position: relative; overflow: hidden; color: #fff; background: #070d1a;
+  min-height: clamp(560px, calc(100svh - 150px), 920px);
+  display: flex; align-items: center;
+}
+.p-top__img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 70% 40%;
+  animation: topZoom 14s ease-out both;
+}
+@keyframes topZoom { from { transform: scale(1.12); } to { transform: scale(1); } }
+.p-top__breath { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.p-top__shade {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(7,13,26,.88) 0%, rgba(7,13,26,.55) 34%, rgba(7,13,26,0) 62%);
+}
+.p-top__inner { position: relative; z-index: 2; padding-block: 4rem; }
+.p-top__eyebrow {
+  margin: 0 0 1rem; font-size: clamp(.78rem, 1.6vw, .95rem); letter-spacing: .24em; color: #FFC58A;
+  opacity: 0; animation: topUp 1s ease .3s forwards;
+}
+.p-top__title {
+  margin: 0 0 1.2rem; font-weight: 800; line-height: 1.04; letter-spacing: .02em;
+  font-size: clamp(3.4rem, 10.5vw, 9rem); text-shadow: 0 4px 30px rgba(0,0,0,.35);
+}
+.p-top__title span { display: block; opacity: 0; filter: blur(14px); transform: translateY(40px);
+  animation: topTitle 1.3s cubic-bezier(.2,.8,.2,1) forwards; }
+.p-top__title span:nth-child(1) { animation-delay: .5s; }
+.p-top__title span:nth-child(2) { animation-delay: 1s;
+  background: linear-gradient(90deg, #fff 10%, #FFC58A 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@keyframes topTitle { to { opacity: 1; filter: blur(0); transform: none; } }
+@keyframes topUp { to { opacity: 1; transform: none; } }
+.p-top__sub {
+  margin: 0 0 1.8rem; max-width: 26em; font-size: clamp(1rem, 2.3vw, 1.3rem); line-height: 1.9; color: rgba(255,255,255,.88);
+  opacity: 0; transform: translateY(16px); animation: topUp 1s ease 1.8s forwards;
+}
+.p-top__btns { display: flex; flex-wrap: wrap; align-items: center; gap: 1.2rem 1.6rem;
+  opacity: 0; transform: translateY(16px); animation: topUp 1s ease 2.1s forwards; }
+.p-top__link { color: #fff; font-size: .95rem; text-decoration: underline; text-underline-offset: 5px; text-decoration-color: rgba(255,255,255,.5); }
+.p-top__link:hover { color: #FFC58A; }
+.p-top .c-btn--primary { position: relative; overflow: hidden; padding: .9rem 1.8rem; font-size: 1.05rem; }
+.p-top .c-btn--primary::after, .p-cta .c-btn--primary::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent);
+  transform: skewX(-20deg); animation: shine 3.2s ease-in-out infinite;
+}
+.p-cta .c-btn--primary { position: relative; overflow: hidden; }
+@keyframes shine { 0%, 55% { left: -60%; } 100% { left: 140%; } }
+.p-top__cue { position: absolute; z-index: 2; left: 50%; bottom: 18px; width: 26px; height: 42px; margin-left: -13px;
+  border: 2px solid rgba(255,255,255,.7); border-radius: 14px; opacity: 0; animation: topUp 1s ease 2.6s forwards; }
+.p-top__cue span { position: absolute; left: 50%; top: 7px; width: 4px; height: 8px; margin-left: -2px; border-radius: 2px;
+  background: #fff; animation: cue 1.6s ease-in-out infinite; }
+@keyframes cue { 0% { transform: translateY(0); opacity: 1; } 80% { transform: translateY(14px); opacity: 0; } 100% { opacity: 0; } }
+
+@media (max-width: 760px) {
+  .p-top { align-items: flex-start; min-height: min(760px, calc(100svh - 130px)); }
+  .p-top__img { object-position: 74% 100%; height: 62%; top: auto; bottom: 0; inset: auto 0 0 0; }
+  .p-top__shade { background: linear-gradient(180deg, rgba(7,13,26,.96) 0%, rgba(7,13,26,.6) 42%, rgba(7,13,26,0) 70%); }
+  .p-top__inner { padding-block: 2rem; }
+  .p-top__title { font-size: clamp(3rem, 15vw, 5rem); }
+  .p-top__sub br { display: none; }
+}
+
+/* ================= 2. ステージ（3D缶） ================= */
+.p-stage { position: relative; height: 380vh; margin-bottom: 0;
+  background: linear-gradient(180deg, #070d1a 0, #FBF6EF 26vh); }
+.p-stage__pin { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+.p-stage__slot { position: absolute; left: 50%; top: 50%; width: 2px; height: 2px; }
+.p-stage__cap {
+  position: absolute; top: 50%; max-width: min(27rem, 32vw); opacity: 0; pointer-events: none;
+  transform: translateY(calc(-50% + 40px)); transition: opacity .7s ease, transform .9s cubic-bezier(.2,.8,.2,1);
+}
+.p-stage__cap[data-cap="0"], .p-stage__cap[data-cap="2"] { left: max(4vw, calc(50% - 560px)); }
+.p-stage__cap[data-cap="1"] { right: max(4vw, calc(50% - 560px)); }
+.p-stage__cap.is-on { opacity: 1; transform: translateY(-50%); }
+.p-stage__eyebrow { margin: 0 0 .9rem; font-size: .85rem; font-weight: 700; letter-spacing: .24em; color: #FF6600; }
+.p-stage__cap h2 { margin: 0 0 1rem; font-size: clamp(2rem, 3.5vw, 3.4rem); line-height: 1.2; word-break: keep-all; overflow-wrap: anywhere; font-weight: 800; color: #3a1d06; letter-spacing: .01em; }
+.p-stage__cap p:last-child { margin: 0; font-size: clamp(.9rem, 1.4vw, 1.05rem); line-height: 1.9; color: #6e5b48; }
+@media (max-width: 1099px) {
+  .p-stage__slot { top: 36%; }
+  .p-stage__cap { top: auto; bottom: 7vh; left: 6vw !important; right: 6vw !important; max-width: none; text-align: center; transform: translateY(40px); }
+  .p-stage__cap.is-on { transform: none; }
+  .p-stage__cap h2 { font-size: clamp(1.9rem, 7.4vw, 2.8rem); }
+}
+
+/* ================= 3. 数字 ================= */
+.p-stats { background: #FBF6EF; padding: clamp(3rem, 8vw, 6rem) 0 clamp(3.5rem, 9vw, 7rem); margin-bottom: 2rem; }
+.p-stats__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2.5rem; text-align: center; }
+@media (min-width: 800px) { .p-stats__list { grid-template-columns: repeat(3, 1fr); } }
+.p-stats__num { display: block; white-space: nowrap; font-weight: 800; line-height: 1; color: #FF6600; font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #FF9A3C, #E04E00); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.p-stats__num b { font-size: clamp(4rem, 9vw, 7.5rem); font-weight: 800; }
+.p-stats__num small { font-size: clamp(1.2rem, 3vw, 2rem); font-weight: 700; margin: 0 .2em; }
+.p-stats__label { display: block; margin-top: .8rem; font-size: .95rem; color: #6e5b48; }
+
+/* 社名の由来の帯 */
+.p-hero--poem { margin-bottom: 2rem; }
+.p-hero--poem .p-hero__poem em { display: inline-block; }
+.p-hero--poem .p-hero__machine img { transform: none; opacity: 1; }
+
+/* ================= スクロールでふわっと表示 ================= */
+.js-reveal { opacity: 0; transform: translateY(36px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+.js-reveal.from-left { transform: translateX(-48px); }
+.js-reveal.from-right { transform: translateX(48px); }
+.js-reveal.is-in { opacity: 1; transform: none; }
+.p-reasons__link, .p-catalog a, .p-topmerits li, .p-service { transition: transform .35s, box-shadow .35s; }
+.p-reasons__link:hover, .p-catalog a:hover { transform: translateY(-8px); box-shadow: 0 14px 28px rgba(120,70,10,.22); }
+.p-topmerits li:hover, .p-topflow li:hover { transform: translateX(6px); }
+.p-reasons__link img { transition: transform .6s; }
+.p-reasons__link:hover img { transform: scale(1.06); }
+.c-sectiontitle { position: relative; overflow: hidden; }
+.c-sectiontitle::after {
+  content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: 100%;
+  background: linear-gradient(90deg, #FFB347, #FF6600); transform: scaleX(0); transform-origin: left;
+  transition: transform 1s ease .2s;
+}
+.c-sectiontitle.is-in::after { transform: scaleX(1); }
+.p-topflow li { transition: transform .35s; }
+.p-cta { position: relative; overflow: hidden; }
+
+/* ================= コーヒー缶（3D）ガイド ================= */
+.p-can {
+  position: fixed; left: 0; top: 0; width: 200px; height: 340px; z-index: 60;
+  margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+  opacity: 0; pointer-events: none; will-change: transform; transform-origin: 50% 50%;
+  filter: drop-shadow(0 18px 18px rgba(80,40,10,.35));
+}
+.p-can.is-live { pointer-events: auto; }
+.p-can svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.p-can.is-3d svg { display: none; }
+.p-can__3d { display: block; width: 100%; height: 100%; }
+.p-can:focus-visible { outline: 3px solid #0150BC; outline-offset: 6px; border-radius: 20px; }
+.p-can .steam path { fill: none; stroke: #fff; stroke-width: 6; stroke-linecap: round; opacity: 0; animation: steam 3s ease-in-out infinite; }
+.p-can .steam path:nth-child(2) { animation-delay: 1s; }
+.p-can .steam path:nth-child(3) { animation-delay: 2s; }
+@keyframes steam { 0% { opacity: 0; transform: translateY(14px); } 40% { opacity: .85; } 100% { opacity: 0; transform: translateY(-26px); } }
+.p-can .shine { animation: canShine 4s ease-in-out infinite; }
+@keyframes canShine { 0%, 100% { opacity: .35; } 50% { opacity: .75; } }
+
+.p-guide {
+  position: fixed; left: 50%; bottom: 14px; z-index: 61; transform: translate(-50%, 120%);
+  display: flex; align-items: center; max-width: calc(100vw - 24px);
+  padding: .55rem 1.1rem .75rem; background: rgba(89,51,2,.94); color: #fff; border-radius: 999px;
+  font-size: .85rem; line-height: 1.3; box-shadow: 0 8px 24px rgba(0,0,0,.28);
+  transition: transform .5s cubic-bezier(.2,.8,.2,1); text-decoration: none; overflow: hidden;
+}
+.p-guide__txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p-guide.is-show { transform: translate(-50%, 0); }
+.p-guide b { color: #FFC87A; }
+.p-guide__arrow { display: inline-block; animation: bounce 1.2s ease-in-out infinite; }
+.p-guide__bar { position: absolute; left: 0; bottom: 0; height: 4px; width: calc(var(--prog, 0) * 100%); background: linear-gradient(90deg, #FFB347, #FF6600); }
+@keyframes bounce { 50% { transform: translateY(4px); } }
+@media (max-width: 899px) { .p-guide { font-size: .78rem; bottom: 10px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .p-top__eyebrow, .p-top__sub, .p-top__btns, .p-top__cue, .p-top__title span, .js-reveal { opacity: 1; transform: none; filter: none; }
+  .c-sectiontitle::after { transform: scaleX(1); }
+  .p-stage__cap { opacity: 1; position: static; transform: none; }
+}
