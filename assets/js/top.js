@@ -25,7 +25,7 @@
       el.classList.add([].indexOf.call(el.parentNode.children, el) % 2 ? 'from-right' : 'from-left');
     }
     var sib = el.parentNode ? [].indexOf.call(el.parentNode.children, el) : 0;
-    el.style.transitionDelay = (Math.min(sib, 5) * 0.09) + 's';
+    el.style.transitionDelay = (Math.min(sib, 4) * 0.05) + 's';
   });
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (es) {
@@ -35,7 +35,7 @@
         var n = e.target.querySelector('[data-count]');
         if (n) countUp(n);
       });
-    }, { threshold: 0.2, rootMargin: '0px 0px -6% 0px' });
+    }, { threshold: 0.01, rootMargin: '0px 0px 8% 0px' });   // 画面に入る少し手前で表示を始める
     targets.forEach(function (el) { io.observe(el); });
   } else {
     targets.forEach(function (el) { el.classList.add('is-in'); });
@@ -54,46 +54,75 @@
   }
   [].forEach.call(document.querySelectorAll('[data-count]'), function (n) { if (!reduce) n.textContent = '0'; });
 
-  /* ---------- ヒーロー：口元の少し先で白く見える息 ---------- */
+  /* ---------- ヒーロー：冬の吐息 ----------
+     口から前へ勢いよく出て、少し先で白く見え始め、ふくらみながら上へ流れて消える。
+     ぼかした円ではなく、ゆらぎ模様の「湯気の粒」を重ねて、息らしい薄さとムラを出す。 */
   (function breath() {
     var top = document.querySelector('.p-top');
     var cv = document.querySelector('.p-top__breath');
     var img = document.querySelector('.p-top__img');
-    if (!top || !cv || !img) return;
+    if (!top || !cv || !img || reduce) return;
     var ctx = cv.getContext('2d');
     var IW = 1672, IH = 941;          // 元画像の大きさ
-    var LX = 0.702, LY = 0.402;       // 口元の位置（画像上の割合）
-    var EX = 0.640, EY = 0.322;       // 息が白くはっきり見える位置（口元より少し先）
+    var LX = 0.700, LY = 0.398;       // 口元（画像上の割合）
+    var DX = -0.85, DY = -0.47;       // 息の向き（顔の向き＝左上）
     var SC = 0.5;                     // 描画解像度。やわらかい表現なので半分で足りる
-    var W = 0, H = 0, puffs = [], visible = true, last = 0, acc = 0, clock = 0, geo = null;
+    var W = 0, H = 0, parts = [], visible = true, last = 0, acc = 0, clock = 0, geo = null, dirty = false;
+
+    // 湯気の粒（ゆらぎ模様の白いかたまり）を数種類、最初に一度だけ作る
+    function sprite(seed) {
+      var S = 96, c = document.createElement('canvas'); c.width = c.height = S;
+      var x = c.getContext('2d'), id = x.createImageData(S, S), d = id.data;
+      function hash(i, j) { var h = Math.sin(i * 127.1 + j * 311.7 + seed * 74.7) * 43758.5453; return h - Math.floor(h); }
+      function vn(px, py) {
+        var i = Math.floor(px), j = Math.floor(py), fx = px - i, fy = py - j;
+        var ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+        var a = hash(i, j), b = hash(i + 1, j), c2 = hash(i, j + 1), e = hash(i + 1, j + 1);
+        return a + (b - a) * ux + (c2 - a) * uy + (a - b - c2 + e) * ux * uy;
+      }
+      for (var yy = 0; yy < S; yy++) for (var xx = 0; xx < S; xx++) {
+        var n = 0, amp = 0.5, f = 1;
+        for (var o = 0; o < 4; o++) { n += amp * vn(xx / S * 3.2 * f + seed, yy / S * 3.2 * f); f *= 2; amp *= 0.5; }
+        var dx = (xx - S / 2) / (S / 2), dy = (yy - S / 2) / (S / 2), r = Math.sqrt(dx * dx + dy * dy);
+        var fall = clamp(1 - r, 0, 1); fall = fall * fall * (3 - 2 * fall);
+        var v = clamp((n - 0.28) / 0.6, 0, 1);
+        var k = (yy * S + xx) * 4;
+        d[k] = 248; d[k + 1] = 251; d[k + 2] = 255; d[k + 3] = Math.round(255 * fall * Math.pow(v, 1.15));
+      }
+      x.putImageData(id, 0, 0);
+      return c;
+    }
+    var sprites = [sprite(1), sprite(2), sprite(3), sprite(4)];
 
     function resize() {
       W = top.clientWidth; H = top.clientHeight;
       cv.width = Math.round(W * SC); cv.height = Math.round(H * SC);
       geo = null;
     }
-    // object-fit: cover の表示位置から、息の出る点の座標を求める（変わるのは画面サイズが変わったときだけ）
+    // object-fit: cover の表示位置から、口元の座標を求める（変わるのは画面サイズが変わったときだけ）
     function origin() {
       if (geo) return geo;
-      var sc = Math.max(W / IW, H / IH), dw = IW * sc, dh = IH * sc;
+      // スマホでは画像が下側だけに置かれるので、画像の実際の位置と大きさから求める
+      var bw = img.offsetWidth, bh = img.offsetHeight, bx = img.offsetLeft, by = img.offsetTop;
+      var sc = Math.max(bw / IW, bh / IH), dw = IW * sc, dh = IH * sc;
       var cs = getComputedStyle(img).objectPosition.split(' ');
       var px = parseFloat(cs[0]) / 100, py = parseFloat(cs[1]) / 100;
-      var ox = (W - dw) * px, oy = (H - dh) * py;
-      geo = { x: ox + dw * EX, y: oy + dh * EY, lx: ox + dw * LX, ly: oy + dh * LY, s: sc };
+      geo = { x: bx + (bw - dw) * px + dw * LX, y: by + (bh - dh) * py + dh * LY, s: sc };
       return geo;
     }
-    // 口元から先に向かって、うっすらつながり、先ほど白く濃くなる
-    function spawn(m) {
-      if (puffs.length > 80) return;
-      var u = Math.pow(Math.random(), 0.65);          // 0＝口元、1＝白くはっきり見える位置
-      var spread = (4 + 22 * u) * m.s;
-      puffs.push({
-        x: lerp(m.lx, m.x, u) + (Math.random() - 0.5) * spread * 1.6,
-        y: lerp(m.ly, m.y, u) + (Math.random() - 0.5) * spread,
-        vx: -(8 + Math.random() * 14) * m.s, vy: -(12 + Math.random() * 14) * m.s,
-        r0: (4 + 6 * u + Math.random() * 3) * m.s, r1: (22 + 30 * u + Math.random() * 36) * m.s,
-        life: 3.6 + Math.random() * 2.4, age: 0, ph: Math.random() * 6.28,
-        a: (0.05 + 0.24 * u * u) * (0.7 + Math.random() * 0.6), st: 1.2 + Math.random() * 0.9
+    function spawn(m, power) {
+      if (parts.length > 120) return;
+      var ang = Math.atan2(DY, DX) + (Math.random() - 0.5) * 0.36;
+      var sp = (200 + Math.random() * 100) * m.s * (0.5 + 0.5 * power);
+      parts.push({
+        x: m.x + (Math.random() - 0.5) * 4 * m.s, y: m.y + (Math.random() - 0.5) * 3 * m.s,
+        vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, dist: 0,
+        r: (4 + Math.random() * 3) * m.s, gr: (30 + Math.random() * 20) * m.s,
+        age: 0, life: 1.4 + Math.random() * 0.8,
+        rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.9,
+        a: 0.32 + Math.random() * 0.18, img: sprites[(Math.random() * 4) | 0],
+        fade: (14 + Math.random() * 10) * m.s,      // 口元から少し進んだところで白く見え始める
+        far: (70 + Math.random() * 30) * m.s        // ここから先は薄れて消えていく
       });
     }
     function frame(ts) {
@@ -101,47 +130,47 @@
       if (!visible) { last = ts; return; }
       var dt = Math.min((ts - (last || ts)) / 1000, 0.05); last = ts; clock += dt;
       var m = origin();
-      // 約6.5秒に1回、そっと息を吐く（1.4秒間）
-      var cyc = clock % 6.5;
-      if (cyc > 0.8 && cyc < 2.2) {
+      // 約5.5秒に1回、ふーっと吐く（すっと強まり、ゆっくり弱まる）
+      var cyc = (clock + 4.6) % 5.5;
+      if (cyc < 1.8) {
+        var power = cyc < 0.25 ? cyc / 0.25 : 1 - Math.pow((cyc - 0.25) / 1.55, 1.5);
         acc += dt;
-        var amp = Math.sin(Math.PI * (cyc - 0.8) / 1.4);   // 吐き始めと終わりはそっと
-        while (acc > 0.035) { acc -= 0.035; if (Math.random() < amp) spawn(m); }
+        while (acc > 0.014) { acc -= 0.014; if (Math.random() < 0.35 + 0.65 * power) spawn(m, power); }
       }
-      if (!puffs.length) { if (cv._dirty) { ctx.clearRect(0, 0, cv.width, cv.height); cv._dirty = false; } return; }
-      cv._dirty = true;
-      ctx.setTransform(SC, 0, 0, SC, 0, 0);
-      ctx.clearRect(0, 0, W, H);
-      for (var i = puffs.length - 1; i >= 0; i--) {
-        var p = puffs[i]; p.age += dt;
+      if (!parts.length) { if (dirty) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); dirty = false; } return; }
+      dirty = true;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      var drag = Math.exp(-2.2 * dt), rise = 14 * m.s * dt;
+      for (var i = parts.length - 1; i >= 0; i--) {
+        var p = parts[i]; p.age += dt;
         var t = p.age / p.life;
-        if (t >= 1) { puffs.splice(i, 1); continue; }
-        p.x += (p.vx * (1 - t * 0.7)) * dt + Math.sin(clock * 0.9 + p.ph) * 0.12;
-        p.y += (p.vy * (1 - t * 0.5)) * dt;
-        var r = lerp(p.r0, p.r1, 1 - Math.pow(1 - t, 2));
-        var a = p.a * Math.pow(Math.sin(Math.PI * Math.min(1, t * 1.15)), 1.3);
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.scale(p.st + t * 0.5, 1);          // 風に流されて横に伸びる
-        var g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-        g.addColorStop(0, 'rgba(255,255,255,' + a.toFixed(3) + ')');
-        g.addColorStop(0.5, 'rgba(238,244,255,' + (a * 0.55).toFixed(3) + ')');
-        g.addColorStop(1, 'rgba(238,244,255,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
-        ctx.restore();
+        if (t >= 1) { parts.splice(i, 1); continue; }
+        p.vx *= drag; p.vy = p.vy * drag - rise;                       // 勢いが落ちて、ゆっくり昇る
+        p.vx += Math.sin(clock * 1.3 + p.rot * 3) * 4 * m.s * dt;      // 空気のゆらぎ
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.dist += Math.sqrt(p.vx * p.vx + p.vy * p.vy) * dt;
+        p.rot += p.vr * dt;
+        var r = p.r + p.gr * p.age;
+        var spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        var appear = clamp(p.dist / p.fade, 0, 1); appear = appear * appear * (3 - 2 * appear);
+        var gone = clamp((p.dist - p.far) / (p.far * 1.4), 0, 1); gone = gone * gone * (3 - 2 * gone);
+        var a = p.a * appear * (1 - gone) * Math.pow(1 - t, 1.3);
+        if (a < 0.004) continue;
+        ctx.globalAlpha = a;
+        // 進む向きに細長く伸ばす（勢いがあるほど細長く、遅くなると丸く広がる）
+        var ang = Math.atan2(p.vy, p.vx) + p.rot * 0.15;
+        var st = 1 + Math.min(spd / (200 * m.s), 1) * 0.9;
+        var c = Math.cos(ang) * SC, sn = Math.sin(ang) * SC;
+        ctx.setTransform(c * st, sn * st, -sn, c, p.x * SC, p.y * SC);
+        ctx.drawImage(p.img, -r, -r, r * 2, r * 2);
       }
+      ctx.globalAlpha = 1;
     }
     resize();
     window.addEventListener('resize', resize);
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(function (es) { visible = es[0].isIntersecting; }).observe(top);
-    }
-    if (reduce) { // 動きを減らす設定：静止した息だけ描く
-      var m0 = origin(), g0 = ctx.createRadialGradient(m0.x, m0.y, 0, m0.x, m0.y, 70 * m0.s);
-      g0.addColorStop(0, 'rgba(255,255,255,.25)'); g0.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.scale(SC, SC); ctx.fillStyle = g0; ctx.fillRect(0, 0, W, H);
-      return;
     }
     requestAnimationFrame(frame);
   })();
@@ -159,7 +188,7 @@
   var dprCap = Math.min(window.devicePixelRatio || 1, 2);
   var lowPower = window.matchMedia('(pointer: coarse)').matches ||
     (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
-  var RES = lowPower ? Math.min(dprCap, 1.25) : Math.min(dprCap * 1.2, 2.2);
+  var RES = lowPower ? Math.min(dprCap, 1.5) : dprCap;
 
   function init3D() {
     var T = window.THREE;
@@ -178,7 +207,7 @@
     var rim = new T.DirectionalLight(0xffc890, 0.14); rim.position.set(4, 1, -3); scene.add(rim);
 
     var rad = 0.95, hh = 3.7;
-    var tex = new T.TextureLoader().load('assets/img/hero/can-dydo-blend.jpg');
+    var tex = new T.TextureLoader().load('assets/img/hero/can-dydo-blend.jpg', function () { if (g3) g3.dirty = true; });
     tex.wrapS = T.RepeatWrapping; tex.offset.x = 0.5;
     tex.anisotropy = 4;
     var side = new T.MeshPhongMaterial({ map: tex, shininess: 38, specular: 0x333333 });
@@ -196,10 +225,15 @@
     tab.scale.set(1.3, 1, 0.9); tab.position.set(0.1, hh / 2 + 0.04, 0.1); can3.add(tab);
     scene.add(can3);
 
+    // 向きが変わったときだけ描き直す（止まっている間は描かない）
+    var lastRy = 1e9, lastRx = 1e9;
     g3 = {
-      render: function (ry, t) {
-        can3.rotation.set(0.14 + pointer.y * 0.06, ry, 0);
-        can3.position.y = Math.sin(t * 1.6) * 0.05;
+      dirty: true,
+      render: function (ry) {
+        var rx = 0.14 + pointer.y * 0.06;
+        if (!this.dirty && Math.abs(ry - lastRy) < 0.0008 && Math.abs(rx - lastRx) < 0.0008) return;
+        this.dirty = false; lastRy = ry; lastRx = rx;
+        can3.rotation.set(rx, ry, 0);
         renderer.render(scene, cam);
       }
     };
@@ -235,12 +269,16 @@
   function remeasure() { cancelAnimationFrame(mTimer); mTimer = requestAnimationFrame(measure); }
   measure();
   window.addEventListener('resize', remeasure);
-  window.addEventListener('load', function () { setTimeout(measure, 300); });
+  window.addEventListener('load', function () {
+    setTimeout(measure, 300);
+    var idle = window.requestIdleCallback || function (f) { return setTimeout(f, 1200); };
+    idle(load3D, { timeout: 2500 });
+  });
   if (window.ResizeObserver) new ResizeObserver(remeasure).observe(document.body);
 
   var cur = { x: 0, y: 0, s: 1, r: 0, ry: 0, a: 0 }, tar = { x: 0, y: 0, s: 1, r: 0, ry: 0, a: 0 };
   var first = true, idx = -1, eNow = 0, ciPrev = -2, liveNow = false, showNow = null;
-  var lastT = '', lastO = '', lastProg = -1, skip = 0;
+  var lastT = '', lastO = '', lastProg = -1;
 
   function section(y, vh) {
     var line = vh * 0.45, k = -1, f = 0;
@@ -327,22 +365,14 @@
   function frame() {
     requestAnimationFrame(frame);
     var y = compute();
-    if (!loadStarted && y > L.vh * 0.25) load3D();
-    var d = reduce ? 1 : 0.14;
+    if (!loadStarted && y > L.vh * 0.15) load3D();
+    var d = reduce ? 1 : 0.2;
     cur.x = lerp(cur.x, tar.x, d); cur.y = lerp(cur.y, tar.y, d);
     cur.s = lerp(cur.s, tar.s, d); cur.r = lerp(cur.r, tar.r, d); cur.ry = lerp(cur.ry, tar.ry, d);
     cur.a = lerp(cur.a, tar.a, 0.2);
 
     // 缶が見えていないとき（ヒーロー表示中）は、3Dを描かない
-    if (g3 && cur.a > 0.02) {
-      // 左右の余白に小さく収まっている間は、描く頻度を半分にする
-      if (eNow > 0.5 && (skip ^= 1)) { /* このフレームは描かない */ }
-      else {
-        var tt = performance.now() / 1000;
-        var idle = reduce ? 0 : lerp(Math.sin(tt * 0.9) * 0.25, tt * 0.55, eNow);
-        g3.render(cur.ry + idle, tt);
-      }
-    }
+    if (g3 && cur.a > 0.02) g3.render(cur.ry);
     var o = cur.a.toFixed(2);
     if (o !== lastO) { lastO = o; can.style.opacity = o; }
     var live = cur.a > 0.5;
