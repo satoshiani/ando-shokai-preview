@@ -74,18 +74,18 @@
 .p-stage__pin { position: sticky; top: 0; height: 100vh; overflow: hidden; }
 .p-stage__slot { position: absolute; left: 50%; top: 50%; width: 2px; height: 2px; }
 .p-stage__cap {
-  position: absolute; top: 50%; max-width: min(27rem, 32vw); opacity: 0; pointer-events: none;
+  position: absolute; top: 50%; opacity: 0; pointer-events: none;
   transform: translateY(calc(-50% + 40px)); transition: opacity .7s ease, transform .9s cubic-bezier(.2,.8,.2,1);
 }
-.p-stage__cap[data-cap="0"], .p-stage__cap[data-cap="2"] { left: max(4vw, calc(50% - 560px)); }
-.p-stage__cap[data-cap="1"] { right: max(4vw, calc(50% - 560px)); }
+.p-stage__cap[data-cap="0"], .p-stage__cap[data-cap="2"] { left: 6vw; width: min(30rem, 40vw); }
+.p-stage__cap[data-cap="1"] { left: 56vw; width: min(30rem, 38vw); }
 .p-stage__cap.is-on { opacity: 1; transform: translateY(-50%); }
 .p-stage__eyebrow { margin: 0 0 .9rem; font-size: .85rem; font-weight: 700; letter-spacing: .24em; color: #FF6600; }
 .p-stage__cap h2 { margin: 0 0 1rem; font-size: clamp(2rem, 3.5vw, 3.4rem); line-height: 1.2; word-break: keep-all; overflow-wrap: anywhere; font-weight: 800; color: #3a1d06; letter-spacing: .01em; }
 .p-stage__cap p:last-child { margin: 0; font-size: clamp(.9rem, 1.4vw, 1.05rem); line-height: 1.9; color: #6e5b48; }
 @media (max-width: 1099px) {
   .p-stage__slot { top: 36%; }
-  .p-stage__cap { top: auto; bottom: 7vh; left: 6vw !important; right: 6vw !important; max-width: none; text-align: center; transform: translateY(40px); }
+  .p-stage__cap { top: auto; bottom: 7vh; left: 6vw !important; right: 6vw !important; width: auto !important; text-align: center; transform: translateY(40px); }
   .p-stage__cap.is-on { transform: none; }
   .p-stage__cap h2 { font-size: clamp(1.9rem, 7.4vw, 2.8rem); }
 }
@@ -127,7 +127,7 @@
 
 /* ================= コーヒー缶（3D）ガイド ================= */
 .p-can {
-  position: fixed; left: 0; top: 0; width: 200px; height: 340px; z-index: 60;
+  position: fixed; left: 0; top: 0; width: 260px; height: 460px; z-index: 60;
   margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
   opacity: 0; pointer-events: none; will-change: transform; transform-origin: 50% 50%;
   filter: drop-shadow(0 18px 18px rgba(80,40,10,.35));

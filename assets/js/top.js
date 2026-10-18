@@ -80,14 +80,13 @@
       var ox = (bw - dw) * px, oy = (bh - dh) * py;
       return { x: r.left - tr.left + ox + dw * MX, y: r.top - tr.top + oy + dh * MY, s: sc };
     }
-    function spawn(m, strong) {
+    function spawn(m) {
       puffs.push({
-        x: m.x + (Math.random() - 0.5) * 8, y: m.y + (Math.random() - 0.5) * 6,
-        vx: -(30 + Math.random() * 50) * m.s * (strong ? 1.15 : 0.8),
-        vy: -(6 + Math.random() * 26) * m.s,
-        r0: (3 + Math.random() * 6) * m.s, r1: (28 + Math.random() * 62) * m.s,
-        life: 3.2 + Math.random() * 2.2, age: 0, ph: Math.random() * 6.28,
-        a: 0.10 + Math.random() * 0.14, st: 1.3 + Math.random() * 0.7
+        x: m.x + (Math.random() - 0.5) * 4, y: m.y + (Math.random() - 0.5) * 3,
+        vx: -(10 + Math.random() * 16) * m.s, vy: -(14 + Math.random() * 16) * m.s,
+        r0: (4 + Math.random() * 3) * m.s, r1: (26 + Math.random() * 34) * m.s,
+        life: 4.2 + Math.random() * 2.2, age: 0, ph: Math.random() * 6.28,
+        a: 0.08 + Math.random() * 0.07, st: 1.1 + Math.random() * 0.5
       });
     }
     function frame(ts) {
@@ -95,11 +94,12 @@
       if (!visible) { last = ts; return; }
       var dt = Math.min((ts - (last || ts)) / 1000, 0.05); last = ts; clock += dt;
       var m = mouth();
-      // 約4.6秒に1回、ふーっと息を吐く（1.7秒間）
-      var cyc = clock % 4.6;
-      if (cyc > 0.6 && cyc < 2.3) {
+      // 約6.5秒に1回、そっと息を吐く（1.4秒間）
+      var cyc = clock % 6.5;
+      if (cyc > 0.8 && cyc < 2.2) {
         acc += dt;
-        while (acc > 0.022) { acc -= 0.022; spawn(m, cyc < 1.6); }
+        var amp = Math.sin(Math.PI * (cyc - 0.8) / 1.4);   // 吐き始めと終わりはそっと
+        while (acc > 0.05) { acc -= 0.05; if (Math.random() < amp) spawn(m); }
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
@@ -107,8 +107,8 @@
         var p = puffs[i]; p.age += dt;
         var t = p.age / p.life;
         if (t >= 1) { puffs.splice(i, 1); continue; }
-        p.x += (p.vx * (1 - t * 0.6)) * dt;
-        p.y += (p.vy - 6 * t) * dt + Math.sin(clock * 1.7 + p.ph) * 0.18;
+        p.x += (p.vx * (1 - t * 0.7)) * dt + Math.sin(clock * 0.9 + p.ph) * 0.12;
+        p.y += (p.vy * (1 - t * 0.5)) * dt;
         var r = lerp(p.r0, p.r1, 1 - Math.pow(1 - t, 2));
         var a = p.a * Math.pow(Math.sin(Math.PI * Math.min(1, t * 1.15)), 1.3);
         ctx.save();
@@ -146,70 +146,38 @@
   var caps = [].slice.call(stage.querySelectorAll('.p-stage__cap'));
   var g3 = null;
 
-  function labelTexture(T) {
-    var W = 1792, H = 1024, c = document.createElement('canvas');
-    c.width = W; c.height = H;
-    var x = c.getContext('2d');
-    var neck = H * 0.075;
-    var gm = x.createLinearGradient(0, 0, 0, H);
-    gm.addColorStop(0, '#d8d8d8'); gm.addColorStop(1, '#b9b9b9');
-    x.fillStyle = gm; x.fillRect(0, 0, W, H);
-    var gl = x.createLinearGradient(0, neck, 0, H - neck);
-    gl.addColorStop(0, '#7a3410'); gl.addColorStop(0.5, '#5a230a'); gl.addColorStop(1, '#3f1805');
-    x.fillStyle = gl; x.fillRect(0, neck, W, H - neck * 2);
-    x.fillStyle = '#FF8C42';
-    x.fillRect(0, neck, W, 22); x.fillRect(0, H - neck - 22, W, 22);
-    function design(cx) {
-      x.save(); x.translate(cx, H / 2);
-      x.beginPath(); x.arc(0, -70, 210, 0, Math.PI * 2);
-      x.fillStyle = '#FFF3E2'; x.fill();
-      x.lineWidth = 14; x.strokeStyle = '#FFB347'; x.stroke();
-      x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.fillStyle = '#6a2a09';
-      x.font = '700 230px "Hiragino Mincho ProN","Yu Mincho",serif';
-      x.fillText('珈琲', 0, -62);
-      x.fillStyle = '#FFE2B8';
-      x.font = '700 120px Georgia,"Times New Roman",serif';
-      x.fillText('C O F F E E', 0, 250);
-      x.fillStyle = '#FFC87A';
-      x.font = '700 64px "Hiragino Kaku Gothic ProN",sans-serif';
-      x.fillText('安 東 商 会', 0, 340);
-      x.restore();
-    }
-    design(W / 2); design(0); design(W);
-    var tex = new T.CanvasTexture(c);
-    tex.wrapS = T.RepeatWrapping; tex.offset.x = 0.5;
-    tex.anisotropy = 8;
-    return tex;
-  }
+  var CW = 260, CH = 460;      // 缶を描く領域（上下に余白をとり、切れないようにする）
 
   function init3D() {
     var T = window.THREE;
     var cv = document.createElement('canvas');
-    var R = 3, w = 200, h = 340, renderer;
+    var R = 3, renderer;
     try { renderer = new T.WebGLRenderer({ canvas: cv, alpha: true, antialias: true }); }
     catch (e) { return; }
-    renderer.setPixelRatio(R); renderer.setSize(w, h, false);
+    renderer.setPixelRatio(R); renderer.setSize(CW, CH, false);
     renderer.setClearColor(0x000000, 0);
     var scene = new T.Scene();
-    var cam = new T.PerspectiveCamera(30, w / h, 0.1, 50);
-    cam.position.set(0, 0, 7.6);
-    scene.add(new T.AmbientLight(0xffffff, 0.75));
-    var key = new T.DirectionalLight(0xfff1dc, 0.9); key.position.set(-3, 4, 5); scene.add(key);
-    var rim = new T.DirectionalLight(0xffb070, 0.6); rim.position.set(4, 1, -3); scene.add(rim);
-    var pt = new T.PointLight(0xffffff, 0.5, 20); pt.position.set(2, -1, 5); scene.add(pt);
+    var cam = new T.PerspectiveCamera(30, CW / CH, 0.1, 50);
+    cam.position.set(0, 0, 8.9);
+    // 写真に光の陰影が写り込んでいるので、ライトは控えめにして色をそのまま見せる
+    scene.add(new T.AmbientLight(0xffffff, 0.74));
+    var key = new T.DirectionalLight(0xfff4e6, 0.28); key.position.set(-3, 4, 5); scene.add(key);
+    var rim = new T.DirectionalLight(0xffc890, 0.14); rim.position.set(4, 1, -3); scene.add(rim);
 
-    var rad = 0.95, hh = 3.4;
-    var side = new T.MeshPhongMaterial({ map: labelTexture(T), shininess: 70, specular: 0x777777 });
-    var cap = new T.MeshPhongMaterial({ color: 0xcfcfcf, shininess: 120, specular: 0xffffff });
+    var rad = 0.95, hh = 3.7;
+    var tex = new T.TextureLoader().load('assets/img/hero/can-dydo-blend.jpg');
+    tex.wrapS = T.RepeatWrapping; tex.offset.x = 0.5;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 8;
+    var side = new T.MeshPhongMaterial({ map: tex, shininess: 38, specular: 0x333333 });
+    var cap = new T.MeshPhongMaterial({ color: 0xd2d2d2, shininess: 110, specular: 0x999999 });
     var can3 = new T.Group();
     can3.add(new T.Mesh(new T.CylinderGeometry(rad, rad, hh, 64, 1), [side, cap, cap]));
     [1, -1].forEach(function (d) {
-      var ring = new T.Mesh(new T.TorusGeometry(rad - 0.02, 0.07, 16, 64), cap);
+      var ring = new T.Mesh(new T.TorusGeometry(rad - 0.02, 0.05, 16, 64), cap);
       ring.rotation.x = Math.PI / 2; ring.position.y = d * hh / 2; can3.add(ring);
     });
-    var lid = new T.Mesh(new T.CylinderGeometry(rad - 0.14, rad - 0.14, 0.04, 64),
-      new T.MeshPhongMaterial({ color: 0xe4e4e4, shininess: 150, specular: 0xffffff }));
+    var lid = new T.Mesh(new T.CylinderGeometry(rad - 0.12, rad - 0.12, 0.04, 64),
+      new T.MeshPhongMaterial({ color: 0xe0e0e0, shininess: 120, specular: 0xaaaaaa }));
     lid.position.y = hh / 2 + 0.01; can3.add(lid);
     var tab = new T.Mesh(new T.CylinderGeometry(0.2, 0.2, 0.03, 32), cap);
     tab.scale.set(1.3, 1, 0.9); tab.position.set(0.1, hh / 2 + 0.04, 0.1); can3.add(tab);
@@ -217,8 +185,8 @@
 
     g3 = {
       render: function (ry, t) {
-        can3.rotation.set(0.18 + pointer.y * 0.08, ry, 0);
-        can3.position.y = Math.sin(t * 1.6) * 0.06;
+        can3.rotation.set(0.14 + pointer.y * 0.06, ry, 0);
+        can3.position.y = Math.sin(t * 1.6) * 0.05;
         renderer.render(scene, cam);
       }
     };
@@ -253,6 +221,8 @@
     return { k: k, f: f };
   }
 
+  function stageCap(prog) { return prog < 0.04 ? -1 : Math.min(caps.length - 1, Math.floor((prog - 0.04) / 0.32)); }
+
   function compute() {
     var vw = window.innerWidth, vh = window.innerHeight, y = window.scrollY;
     var wide = vw >= 1200, big = vw >= 1100;
@@ -264,7 +234,7 @@
     eNow = e;
 
     var hx = lr.left + lr.width / 2, hy = lr.top + lr.height / 2;
-    var hs = Math.min(vh * (big ? 0.62 : 0.46) / 340, big ? 1.7 : 1.4) * lerp(0.55, 1, smooth(enter));
+    var hs = Math.min(vh * (big ? 0.58 : 0.44) / 368, big ? 1.5 : 1.15) * lerp(0.55, 1, smooth(enter));
 
     var dx, dy, ds;
     if (wide) {
@@ -272,14 +242,16 @@
       var fl = Math.floor(f), g = fl + smooth(clamp((f - fl - 0.82) / 0.18, 0, 1));
       dx = lerp(right, left, 0.5 - 0.5 * Math.cos(Math.PI * g));
       dy = vh * 0.5 + Math.sin(f * 2.1) * vh * 0.12;
-      ds = Math.min(0.5, (gw - 14) / 200);
+      ds = Math.min(0.46, (gw - 14) / 190);
     } else {
-      dx = vw - 46; dy = vh - 150 + Math.sin(f * 2.1) * 10; ds = 0.34;
+      dx = vw - 44; dy = vh - 160 + Math.sin(f * 2.1) * 10; ds = 0.3;
     }
     var spin = Math.PI * 2.5;                       // ステージで回る量
     var stageRy = prog * spin + pointer.x * 0.35;
     var dockRy = spin + f * Math.PI * 1.2;
-    tar.x = lerp(hx, dx, e); tar.y = lerp(hy, dy, e);
+    var ci0 = stageCap(prog);
+    var off = big ? (ci0 === 1 ? -1 : (ci0 >= 0 ? 1 : 0)) * vw * 0.2 : 0;
+    tar.x = lerp(hx + off, dx, e); tar.y = lerp(hy, dy, e);
     tar.s = lerp(hs, ds, e);
     tar.r = reduce ? 0 : lerp(0, Math.sin(f * Math.PI * 2) * 18, e);
     tar.ry = reduce ? 0 : lerp(stageRy, dockRy, e);
@@ -288,7 +260,7 @@
     if (first) { cur.x = tar.x; cur.y = tar.y; cur.s = tar.s; cur.r = tar.r; cur.ry = tar.ry; first = false; }
 
     // ステージの文字を、回転の進み具合に合わせて切り替える
-    var ci = prog < 0.04 ? -1 : Math.min(caps.length - 1, Math.floor((prog - 0.04) / 0.32));
+    var ci = ci0;
     if (e > 0.02) ci = -1;
     caps.forEach(function (c, i) { c.classList.toggle('is-on', i === ci); });
 
@@ -337,7 +309,7 @@
     }
     can.style.opacity = cur.a.toFixed(3);
     can.classList.toggle('is-live', cur.a > 0.5);
-    can.style.transform = 'translate(' + (cur.x - 100).toFixed(1) + 'px,' + (cur.y - 170).toFixed(1) +
+    can.style.transform = 'translate(' + (cur.x - CW / 2).toFixed(1) + 'px,' + (cur.y - CH / 2).toFixed(1) +
       'px) rotate(' + cur.r.toFixed(2) + 'deg) scale(' + Math.max(cur.s, 0.01).toFixed(3) + ')';
     requestAnimationFrame(frame);
   }
